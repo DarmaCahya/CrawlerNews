@@ -4,10 +4,6 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import pandas as pd
 import time
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -45,95 +41,52 @@ def parse_article(link, website):
 
 def parse_page(url, website):
     news_data = []
-
-    if website['name'] == 'CNN Indonesia':
-        driver = webdriver.Chrome()
-        driver.get(url)
-        
-        try:
-            WebDriverWait(driver, 20).until(
-                EC.invisibility_of_element_located((By.CLASS_NAME, 'animate-pulse'))
-            )
-            
-            content = driver.page_source
-            soup = BeautifulSoup(content, 'html.parser')
-            
-            articles = soup.find_all('article')
-            
-            for article in articles:
-                title = article.find('h2').get_text(strip=True) if article.find('h2') else 'No Title'
-                date_tag = article.find('span', class_='text-xs text-cnn_black_light3')
-                date = date_tag.get_text(strip=True) if date_tag else 'No date found'
-
-                link_tag = article.find('a')
-                link = link_tag['href'] if link_tag else 'No link found'
-
-                image_tag = article.find('img')
-                image = image_tag['src'] if image_tag else 'No image found'
-                content = parse_article(link, website) if link != 'No link found' else 'No content found'
-                if not content:
-                    content = "No content found"
-
-                if((link == "#") and (content == "No content found")):
-                    continue
-                else:
-                    news_data.append({
-                        'title': title,
-                        'content': content,
-                        'date': date,
-                        'link': link,
-                        'image': image,
-                        'is_fake': 0,
-                        'media_bias': website['platform']
-                    })
-        
-        finally:
-            driver.quit()
-
-    else:
-        soup = get_soup(url)
-        articles = soup.find_all(website['article_tag'], class_=website['article_class'])
-        print(f"Found {len(articles)} articles on page: {url}")
-        
-        for article in articles:
-            title_tag = article.find(class_=website.get('title_class', None))
+    soup = get_soup(url)
+    articles = soup.find_all(website['article_tag'], class_=website['article_class'])
+    print(f"Found {len(articles)} articles on page: {url}")
+    
+    for article in articles:
+        title_tag = article.find(class_=website.get('title_class', None))
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+        else:
+            title_tag = article.find('a')
             if title_tag:
-                title = title_tag.get_text(strip=True)
+                title = title_tag['title'] if 'title' in title_tag.attrs else title_tag.get_text(strip=True)
             else:
-                title_tag = article.find('a')
-                if title_tag:
-                    title = title_tag['title'] if 'title' in title_tag.attrs else title_tag.get_text(strip=True)
-                else:
-                    title = 'No title found'
-            link_tag = article.find('a')
-            link = link_tag['href'] if link_tag else 'No link found'
+                title = 'No title found'
 
-            date_tag = article.find(class_=website['date_class'])
-            date = date_tag.get_text(strip=True) if date_tag else 'No date found'
+        link_tag = article.find('a')
+        link = link_tag['href'] if link_tag else 'No link found'
 
-            image_tag = article.find('img')
-            if(website['name'] == 'Antara'):
-                image = image_tag['data-src'] if image_tag else 'No image found'
-            elif(website['name'] == 'Detik'):
-                image = image_tag['src'] if image_tag else 'No image found'
+        date_tag = article.find(class_=website['date_class'])
+        date = date_tag.get_text(strip=True) if date_tag else 'No date found'
 
-            content = parse_article(link, website) if link != 'No link found' else 'No content found'
-            if not content:
-                content = "No content found"
+        image_tag = article.find('img')
+        if website['name'] == 'Antara':
+            image = image_tag['data-src'] if image_tag else 'No image found'
+        elif website['name'] == 'Detik':
+            image = image_tag['src'] if image_tag else 'No image found'
+        else:
+            image = 'No image found'
 
-            if(((link == "No link found") and (content == "No content found")) or (content == "No content found")):
-                continue
-            else:
-                news_data.append({
-                    'title': title,
-                    'content': content,
-                    'date': date,
-                    'link': link,
-                    'image': image,
-                    'is_fake': 0,
-                    'media_bias': website['platform']
-                })
-            print(f"Appended article: {title}")
+        content = parse_article(link, website) if link != 'No link found' else 'No content found'
+        if not content:
+            content = "No content found"
+
+        if link == "No link found" or content == "No content found":
+            continue
+
+        news_data.append({
+            'title': title,
+            'content': content,
+            'date': date,
+            'link': link,
+            'image': image,
+            'is_fake': 0,
+            'media_bias': website['platform']
+        })
+        print(f"Appended article: {title}")
 
     return news_data
 

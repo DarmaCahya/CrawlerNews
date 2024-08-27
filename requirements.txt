@@ -4,4 +4,3 @@ Flask-SQLAlchemy
 requests
 beautifulsoup4
 pandas
-selenium
