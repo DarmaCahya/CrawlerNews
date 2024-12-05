@@ -107,8 +107,8 @@ def get_all_articles(base_url, website, max_pages=1):
 
 def crawlerGeneral():
     all_news = []
-    tribun_data = crawl_tribun()
-    all_news = all_news + tribun_data
+    #tribun_data = crawl_tribun()
+    #all_news = all_news + tribun_data
 
     for website in websites:
         try:
